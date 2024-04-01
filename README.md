@@ -1,5 +1,5 @@
 # C-Sharp_GPT
-This is a simple C# project that lets you prompt ChatGPT and receive a response in a console application.
+This is a simple C# application that lets you prompt ChatGPT and receive a response in a console.
 
 ## Prerequisites
 * OpenAI account with billing information added.
