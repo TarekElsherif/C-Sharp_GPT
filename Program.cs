@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
@@ -10,69 +11,69 @@ namespace GPT_API_Test
     {
         private static readonly HttpClient client = new HttpClient();
 
-        public static string _apiKey = "API-KEY"; // TODO: insert your OpenAI API key here
-        public static string _endpointURL = "https://api.openai.com/v1/chat/completions";
-        public static string _modelType = "gpt-3.5-turbo";
-        public static int _maxTokens = 256;
-        public static double _temprature = 0.1;
+        public struct Config
+        {
+            public string apiKey;
+            public string endpointURL;
+            public string modelType;
+            public int maxTokens;
+            public double temprature;
+        }
 
         public struct Message
         {
-            [JsonProperty("role")]
-            public string Role;
-            [JsonProperty("content")]
-            public string Content;
+            public string role;
+            public string content;
         }
 
         public struct Choices
         {
-            [JsonProperty("message")]
-            public Message Message;
+            public Message message;
         }
 
         public struct Response
         {
-            [JsonProperty("choices")]
-            public Choices[] Choices;
+            public Choices[] choices;
         }
 
         public static async Task Main(string[] args)
         {
-            await StartChat();
+            string configString = File.ReadAllText("openai.config");
+            Config config = JsonConvert.DeserializeObject<Config>(configString);
+            await StartChat(config);
         }
 
-        public static async Task StartChat()
+        public static async Task StartChat(Config config)
         {
             Console.WriteLine("Type something and press enter:\n");
             string input = Console.ReadLine();
             Console.WriteLine("\n[Receiving Response...]\n");
-            string response = await OpenAISendPrompt(input);
+            string response = await OpenAISendPrompt(input, config);
             Console.WriteLine(response + "\n");
-            await StartChat();
+            await StartChat(config);
         }
 
-        public static async Task<string> OpenAISendPrompt(string prompt)
+        public static async Task<string> OpenAISendPrompt(string prompt, Config config)
         {
-            Message[] prompts = new Message[1] { new Message { Role = "user", Content = prompt } };
+            Message[] prompts = new Message[1] { new Message { role = "user", content = prompt } };
             string stringResponse =
-                await OpenAIComplete(_apiKey, _endpointURL, _modelType, prompts, _maxTokens, _temprature);
+                await OpenAIComplete(prompts, config);
             Response response = JsonConvert.DeserializeObject<Response>(stringResponse);
-            return response.Choices[0].Message.Content;
+            return response.choices[0].message.content;
         }
 
-        public static async Task<string> OpenAIComplete(string apiKey, string endPoint, 
-            string modelType, Message[] prompt, int maxTokens, double temprature)
+        public static async Task<string> OpenAIComplete(Message[] prompt, Config config)
         {
             var requestBody = new
             {
-                model = modelType,
+                model = config.modelType,
                 messages = prompt,
-                max_tokens = maxTokens,
-                temperature = temprature
+                max_tokens = config.maxTokens,
+                temperature = config.temprature
             };
             string jsonPayload = JsonConvert.SerializeObject(requestBody);
-            var request = new HttpRequestMessage(HttpMethod.Post, endPoint);
-            request.Headers.Add("Authorization", $"Bearer {apiKey}");
+            var request = new HttpRequestMessage(HttpMethod.Post, config.endpointURL);
+            request.Headers.Add("Authorization", $"Bearer {config.apiKey}");
             request.Content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
 
             var httpResponse = await client.SendAsync(request);
